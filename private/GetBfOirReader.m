@@ -1,6 +1,6 @@
 function BfOirReader = GetBfOirReader(OirHeaderPath)
-BfOirReader=loci.formats.Memoizer(loci.formats.ChannelSeparator(loci.formats.ChannelFiller));
-BfOirReader.setMetadataStore(loci.formats.services.OMEXMLServiceImpl().createOMEXMLMetadata);
+import loci.formats.*;
+BfOirReader=Memoizer(ChannelSeparator(ChannelFiller));
+BfOirReader.setMetadataStore(ome.OMEPyramidStore);
 BfOirReader.setId(OirHeaderPath);
 end
-
