@@ -1,51 +1,43 @@
 function Output = OZOF(OirReader,Z,Metadata,TiffPaths,Cds2Tiff)
-ReaderSizeC=Metadata.SizeC;
+SizeX=Metadata.SizeX;
+SizeY=Metadata.SizeY;
+SizeC=Metadata.SizeC;
 SizeZ=Metadata.SizeZ;
 SizeT=Metadata.SizeT;
-ReaderTDelta=ReaderSizeC*SizeZ;
+TDelta=SizeC*SizeZ;
+DeviceNames=Metadata.DeviceNames;
 if Z>0
+	FirstPlane=true;
 	Output=TiffPaths+".Z"+string(Z)+".tif";
+	ReaderTIndex=(Z-1)*SizeC;
 	if Cds2Tiff
-		ReaderTIndex=(Z-1)*ReaderSizeC;
-		WriterTIndex=0;
-		TiffWriter=GetTiffSubWriter(OirReader,Output,Zs=Z);
-		for T=1:SizeT
-			ReaderCIndex=ReaderTIndex-1;
-			WriterCIndex=WriterTIndex-1;
-			for C=1:ReaderSizeC
-				TiffWriter.saveBytes(WriterCIndex+C,OirReader.openBytes(ReaderCIndex+C));
-			end
-			ReaderTIndex=ReaderTIndex+ReaderTDelta;
-			WriterTIndex=WriterTIndex+ReaderSizeC;
-		end
-		TiffWriter.close;
+		ImageLogical=true(SizeC,1);
 	else
-		ImageLogical=~startsWith(Metadata.DeviceNames,"CD");
-		WriterSizeC=sum(ImageLogical);
-		TiffWriter=GetTiffSubWriter(OirReader,Output,Cs=find(ImageLogical),Zs=Z);
-		ReaderCIndex=(Z-1)*ReaderSizeC-1;
-		WriterCIndex=0;
-		for C=1:ReaderSizeC
-			ReaderTIndex=ReaderCIndex+C;
+		ImageLogical=~startsWith(DeviceNames,"CD");
+	end
+	[TiffWriter,TagStruct]=GetTiffSubWriter(OirReader,Output,Cs=find(ImageLogical),Zs=Z);
+	for T=1:SizeT
+		ReaderCIndex=ReaderTIndex-1;
+		for C=1:SizeC
 			if ImageLogical(C)
-				WriterTIndex=WriterCIndex;
-				for T=1:SizeT
-					TiffWriter.saveBytes(WriterTIndex,OirReader.openBytes(ReaderTIndex));
-					ReaderTIndex=ReaderTIndex+ReaderTDelta;
-					WriterTIndex=WriterTIndex+WriterSizeC;
+				if FirstPlane
+					FirstPlane=false;
+				else
+					TiffWriter.setTag(TagStruct);
 				end
-				WriterCIndex=WriterCIndex+1;
+				TiffWriter.write(reshape(typecast(OirReader.openBytes(ReaderCIndex+C),"uint16"),SizeX,SizeY)');
+				TiffWriter.writeDirectory;
 			end
 		end
-		TiffWriter.close;
+		ReaderTIndex=ReaderTIndex+TDelta;
 	end
+	TiffWriter.close;
 else
-	TagPixelsNo=Metadata.SizeX*Metadata.SizeY*SizeZ;
-	DeviceNames=Metadata.DeviceNames;
+	TagPixelsNo=SizeX*SizeY*SizeZ;
 	TagLogical=startsWith(DeviceNames,"CD");
-	for C=1:ReaderSizeC
+	for C=1:SizeC
 		if TagLogical(C)
-			Output.(DeviceNames(C))=CollectChannelTag(ReaderSizeC,SizeZ,SizeT,C-1,ReaderTDelta,OirReader,TagPixelsNo);
+			Output.(DeviceNames(C))=CollectChannelTag(SizeC,SizeZ,SizeT,C-1,TDelta,OirReader,TagPixelsNo);
 		end
 	end
 end

@@ -1,4 +1,4 @@
-function TiffWriter = GetTiffSubWriter(OirReader,TiffPath,ZCSelection)
+function [TiffClient,TagStruct] = GetTiffSubWriter(OirReader,TiffPath,ZCSelection)
 arguments
 	OirReader(1,1)
 	TiffPath(1,1)string
@@ -100,6 +100,45 @@ for a=0:OmePS.getImageCount-1
 		end
 	end
 end
-TiffWriter=loci.formats.out.OMETiffWriter;
-TiffWriter.setMetadataRetrieve(NewOmePS);
-TiffWriter.setId(TiffPath);
+TiffClient=loci.formats.out.OMETiffWriter;
+TiffClient.setMetadataRetrieve(NewOmePS);
+TempPath=fullfile(fileparts(mfilename("fullpath")),string(java.util.UUID.randomUUID)+".tif");
+TiffClient.setId(TempPath);
+TiffClient.saveBytes(0,OirReader.openBytes(0));
+TiffClient.close;
+TiffClient=Tiff(TempPath);
+HeaderDescription=TiffClient.getTag(Tiff.TagID.ImageDescription);
+TiffClient.close;
+delete(TempPath);
+HeaderDescription=GetXmlDom(HeaderDescription);
+Pixels=HeaderDescription.getElementsByTagName("Pixels").item(0);
+TDTemplate=Pixels.getElementsByTagName("TiffData").item(0);
+Pixels.removeChild(TDTemplate);
+[~,TiffName,Extension]=fileparts(TiffPath);
+UUID=TDTemplate.getElementsByTagName("UUID").item(0);
+UUID.setAttribute("FileName",TiffName+Extension);
+SizeC=NewOmePS.getPixelsSizeC(0).getValue;
+SizeZ=NewOmePS.getPixelsSizeZ(0).getValue;
+SizeT=NewOmePS.getPixelsSizeT(0).getValue;
+IFD=0;
+for T=0:SizeT-1
+	TemplateT=TDTemplate.cloneNode(true);
+	TemplateT.setAttribute("FirstT",string(T));
+	for Z=0:SizeZ-1
+		TemplateZ=TemplateT.cloneNode(true);
+		TemplateZ.setAttribute("FirstZ",string(Z));
+		for C=0:SizeC-1
+			TiffData=TemplateZ.cloneNode(true);
+			TiffData.setAttribute("FirstC",string(C));
+			TiffData.setAttribute("IFD",string(IFD));
+			IFD=IFD+1;
+			Pixels.appendChild(TiffData);
+		end
+	end
+end
+HeaderDescription=Dom2String(HeaderDescription);
+TiffClient=Tiff(TiffPath,"w8");
+TagStruct=struct("ImageWidth",OirReader.getSizeX,"ImageLength",OirReader.getSizeY,"Photometric",Tiff.Photometric.MinIsBlack,"Compression",Tiff.Compression.None,"PlanarConfiguration",Tiff.PlanarConfiguration.Chunky,"BitsPerSample",16,"SamplesPerPixel",1);
+Tag=TagStruct;
+Tag.ImageDescription=char(HeaderDescription);
+TiffClient.setTag(Tag);

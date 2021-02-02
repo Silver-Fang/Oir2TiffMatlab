@@ -1,9 +1,7 @@
 function CheckJavaPath()
-Error=false;
 try
 	loci.formats.in.FakeReader;
 catch
-	Error=true;
 	JcpPath=fullfile(prefdir,"javaclasspath.txt");
 	%只有此编码方案能被正确读取
 	Fid=fopen(JcpPath,"at","n","GB18030");
@@ -12,4 +10,3 @@ catch
 	error("未将BioFormats.jar加入Java路径。已自动添加到"+JcpPath+"，请重启MATLAB");
 end
 end
-

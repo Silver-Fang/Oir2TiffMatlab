@@ -1,4 +1,8 @@
-function Metadata = OirMetadata(OirPath)
+function Metadata = OirMetadata(OirPath,MapPath)
+arguments
+	OirPath(1,1)string
+	MapPath(1,1)string=""
+end
 persistent DocumentBuilder IpEt
 if isempty(DocumentBuilder)
 	DocumentBuilder=javax.xml.parsers.DocumentBuilderFactory.newInstance.newDocumentBuilder;
@@ -12,7 +16,7 @@ MetaStart=strfind(Buffer,"<lsmimage:imageProperties");
 Buffer=Buffer(MetaStart(1):end);
 MetaEnd=strfind(Buffer,IpEt);
 fclose(FileId);
-Dom=DocumentBuilder.parse(org.xml.sax.InputSource(java.io.StringReader(Buffer(1:MetaEnd(1)+strlength(IpEt)-1))));
+Dom=GetXmlDom(Buffer(1:MetaEnd(1)+strlength(IpEt)-1));
 ScannerType=string(Dom.getElementsByTagName("lsmimage:scannerType").item(0).getTextContent);
 Metadata.ScannerType=ScannerType;
 ElementCollection=Dom.getElementsByTagName("commonparam:axis");
@@ -48,7 +52,11 @@ import loci.formats.*
 OirReader=Memoizer(ChannelSeparator(ChannelFiller));
 OmePS=ome.OMEPyramidStore;
 OirReader.setMetadataStore(OmePS);
-OirReader.setId(OirPath);
+if MapPath==""
+	OirReader.setId(OirPath);
+else
+	OirReader.setId(MapPath);
+end
 Metadata.SizeX=OirReader.getSizeX;
 Metadata.SizeY=OirReader.getSizeY;
 Metadata.SizeZ=OirReader.getSizeZ;

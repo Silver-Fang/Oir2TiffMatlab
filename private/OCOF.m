@@ -1,47 +1,50 @@
 function Output = OCOF(OirReader,C,Metadata,TiffPaths,Cds2Tiff,OneZOneFile)
-ReaderSizeC=Metadata.SizeC;
+SizeX=Metadata.SizeX;
+SizeY=Metadata.SizeY;
+SizeC=Metadata.SizeC;
 SizeZ=Metadata.SizeZ;
 SizeT=Metadata.SizeT;
-ReaderTDelta=ReaderSizeC*SizeZ;
+TDelta=SizeC*SizeZ;
 if Cds2Tiff||~startsWith(Metadata.DeviceNames(C),"CD")
+	ZIndex=C-1;
 	if OneZOneFile
 		Output=TiffPaths+"."+Metadata.DeviceNames(C)+".Z"+string(1:SizeZ)+".tif";
-		ReaderZIndex=C-1;
-% 		SizeX=Metadata.SizeX;
-% 		SizeY=Metadata.SizeY;
 		for Z=1:SizeZ
-% 			TiffWriter=Tiff(Output(Z),"w");
-% 			TagStruct=struct("ImageWidth",double(SizeX),"ImageLength",double(SizeY),"Photometric",Tiff.Photometric.MinIsBlack,"Compression",Tiff.Compression.None,"PlanarConfiguration",Tiff.PlanarConfiguration.Chunky,"BitsPerSample",16,"SamplesPerPixel",1);
- 			TiffWriter=GetTiffSubWriter(OirReader,Output(Z),Cs=C,Zs=Z);
-			ReaderTIndex=ReaderZIndex;
-			for T=0:SizeT-1
-% 				TiffWriter.setTag(TagStruct);
-% 				TiffWriter.write(reshape(typecast(OirReader.openBytes(ReaderTIndex),"uint16"),SizeX,SizeY)');
-% 				TiffWriter.writeDirectory;
-				TiffWriter.saveBytes(T,OirReader.openBytes(ReaderTIndex));
-				ReaderTIndex=ReaderTIndex+ReaderTDelta;
+ 			[TiffWriter,TagStruct]=GetTiffSubWriter(OirReader,Output(Z),Cs=C,Zs=Z);
+			TIndex=ZIndex;
+			FirstPlane=true;
+			for T=1:SizeT
+				if FirstPlane
+					FirstPlane=false;
+				else
+					TiffWriter.setTag(TagStruct);
+				end
+				TiffWriter.write(reshape(typecast(OirReader.openBytes(TIndex),"uint16"),SizeX,SizeY)');
+				TiffWriter.writeDirectory;
+				TIndex=TIndex+TDelta;
 			end
-			ReaderZIndex=ReaderZIndex+ReaderSizeC;
+			ZIndex=ZIndex+SizeC;
 			TiffWriter.close;
 		end
 	else
 		Output=TiffPaths+"."+Metadata.DeviceNames(C)+".tif";
-		TiffWriter=GetTiffSubWriter(OirReader,Output,Cs=C);
-		ReaderTIndex=C-1;
-		WriterTIndex=0;
+		[TiffWriter,TagStruct]=GetTiffSubWriter(OirReader,Output,Cs=C);
+		FirstPlane=true;
 		for T=1:SizeT
-			ReaderZIndex=ReaderTIndex;
-			WriterZIndex=WriterTIndex-1;
 			for Z=1:SizeZ
-				TiffWriter.saveBytes(WriterZIndex+Z,OirReader.openBytes(ReaderZIndex));
-				ReaderZIndex=ReaderZIndex+ReaderSizeC;
+				if FirstPlane
+					FirstPlane=false;
+				else
+					TiffWriter.setTag(TagStruct);
+				end
+				TiffWriter.write(reshape(typecast(OirReader.openBytes(ZIndex),"uint16"),SizeX,SizeY)');
+				TiffWriter.writeDirectory;
+				ZIndex=ZIndex+SizeC;
 			end
-			WriterTIndex=WriterTIndex+SizeZ;
-			ReaderTIndex=ReaderTIndex+ReaderTDelta;
 		end
 		TiffWriter.close;
 	end
 else
-	TagPixelsNo=Metadata.SizeX*Metadata.SizeY*SizeZ;
-	Output=CollectChannelTag(ReaderSizeC,SizeZ,SizeT,C-1,ReaderTDelta,OirReader,TagPixelsNo);
+	TagPixelsNo=SizeX*SizeY*SizeZ;
+	Output=CollectChannelTag(SizeC,SizeZ,SizeT,C-1,TDelta,OirReader,TagPixelsNo);
 end
