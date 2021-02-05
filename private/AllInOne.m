@@ -76,6 +76,9 @@ if Parallel
 		end
 	end
 end
+if ~exist("Tags","var")
+    Tag=struct([]);
+end
 end
 function Tag=CCTNewReader(SizeC,SizeZ,SizeT,TIndex,TDelta,OirPath,TagPixelsNo)
 OirReader=GetBfOirReader(OirPath);
