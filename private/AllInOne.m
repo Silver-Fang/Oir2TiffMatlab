@@ -77,7 +77,7 @@ if Parallel
 	end
 end
 if ~exist("Tags","var")
-    Tag=struct([]);
+    Tags=struct([]);
 end
 end
 function Tag=CCTNewReader(SizeC,SizeZ,SizeT,TIndex,TDelta,OirPath,TagPixelsNo)
